@@ -17,7 +17,7 @@ devtools::install_github("p8105/p8105.datasets", force = TRUE)
 ```
 
 ### loading up the necessary datasets from the p8105.datasets library, and tidyverse
-```{r}
+```{r package load, message = FALSE}
 library(p8105.datasets)
 data("instacart")
 data("brfss_smart2010")
@@ -68,7 +68,7 @@ There are `r length(unique(instacart[["aisle"]]))` aisles in this dataset. The a
 
 The following plot will illustrate the number of items ordered in each aisle: 
 
-```{r}
+```{r ggp_aisle, message = FALSE}
 ggp_aisle_plot =
   instacart |>
   group_by(department, aisle) |>
@@ -93,7 +93,7 @@ ggp_aisle_plot =
 
 This table includes the three most popular items in each of the aisles "baking ingredients", "dog food care:, and "packaged vegetable fruits"
 
-```{r}
+```{r popular_items, message = FALSE}
 popular_items_table =
   instacart |>
   filter(aisle %in% c("baking ingredients", "dog food care", "packaged vegetables fruits")) |>
@@ -101,12 +101,16 @@ popular_items_table =
   summarize(order_count = sum(add_to_cart_order)) |>
   group_by(aisle) |>
   do(top_n(., 3, wt = order_count))
+
+kable(popular_items_table, 
+      col.names = c("Aisle", "Product Name", "Order Count"),
+      align = "c")
 ```
 
 
 This next table shows the average hour of the day Pink Lady Apples and Coffee Ice Cream are ordered.
 
-```{r}
+```{r apples_coffee, message = FALSE}
 apples_coffee_table =
   instacart |>
   filter(product_name %in% c("Pink Lady Apples", "Coffee Ice Cream")) |>
@@ -117,6 +121,10 @@ apples_coffee_table =
     order_dow = factor(order_dow, levels = 0:6, labels = c("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"))
   ) |> 
   pivot_wider(names_from = order_dow, values_from = mean_hour)
+
+kable(apples_coffee_table, 
+      col.names = c("Product", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"),
+      align = "c")
 ```
 
 
