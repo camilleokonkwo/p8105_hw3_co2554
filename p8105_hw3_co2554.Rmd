@@ -9,3 +9,120 @@ output: github_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+
+
+#### installing the "devtools" package in the console
+```{r devtool_install, eval = FALSE}
+devtools::install_github("p8105/p8105.datasets", force = TRUE)
+```
+
+### loading up the necessary datasets from the p8105.datasets library, and tidyverse
+```{r}
+library(p8105.datasets)
+data("instacart")
+data("brfss_smart2010")
+library(tidyverse)
+library(viridis)
+library(tidyr)
+library(knitr)
+```
+
+### Problem 1: InstaCart
+
+The Instacart dataset illustrates the online grocery orders of their application users. The dataset contains `r nrow(instacart)` observations of `r length(unique(instacart[["user_id"]]))` unique user ID's, with each row representing an item from an order. There is one order per user in this dataset. 
+
+There are `r ncol(instacart)` variables in this dataset, including:
+
+* `order_id`: order identifier
+
+* `product_id`: product identifier
+
+* `add_to_cart_order`: order in which each product was added to cart
+
+* `reordered`: 1 if this prodcut has been ordered by this user in the past, 0 otherwise
+
+* `user_id`: customer identifier
+
+* `eval_set`: which evaluation set this order belongs in (Note that the data for use in this class is exclusively from the “train” eval_set)
+
+* `order_number`: the order sequence number for this user (1=first, n=nth)
+
+* `order_dow`: the day of the week on which the order was placed
+
+* `order_hour_of_day`: the hour of the day on which the order was placed
+
+* `days_since_prior_order`: days since the last order, capped at 30, NA if order_number=1
+
+* `product_name`: name of the product
+
+* `aisle_id`: aisle identifier
+
+* `department_id`: department identifier
+
+* `aisle`: the name of the aisle
+
+* `department`: the name of the department
+
+There are `r length(unique(instacart[["aisle"]]))` aisles in this dataset. The aisles that have the most ordered items are the `r paste(names(head(sort(table(instacart$aisle), decreasing = TRUE), 5)), collapse = ', ')` aisles, respectively. 
+
+
+The following plot will illustrate the number of items ordered in each aisle: 
+
+```{r}
+ggp_aisle_plot =
+  instacart |>
+  group_by(department, aisle) |>
+  summarize(total_items_ordered = sum(add_to_cart_order)) |>
+  filter(total_items_ordered > 10000) |>
+  arrange(department, desc(total_items_ordered)) |>
+  ggplot(aes(x = reorder(aisle, -total_items_ordered), y = total_items_ordered, fill = department)) +
+  geom_bar(stat = "identity") +
+  theme_minimal() +
+  labs(
+    title = "Number of Items Ordered in Each Aisle (Aisles with >10,000 items) - Grouped by Department",
+    x = "Aisle",
+    y = "Number of Items Ordered",
+    fill = "Department"
+  ) +
+  scale_y_continuous(labels = scales::comma_format(scale = 1e-3)) +
+  scale_x_discrete() +
+  scale_fill_viridis_d(direction = -1) +
+  scale_color_viridis_d(direction = -1)
+```
+
+
+This table includes the three most popular items in each of the aisles "baking ingredients", "dog food care:, and "packaged vegetable fruits"
+
+```{r}
+popular_items_table =
+  instacart |>
+  filter(aisle %in% c("baking ingredients", "dog food care", "packaged vegetables fruits")) |>
+  group_by(aisle, product_name) |>
+  summarize(order_count = sum(add_to_cart_order)) |>
+  group_by(aisle) |>
+  do(top_n(., 3, wt = order_count))
+```
+
+
+This next table shows the average hour of the day Pink Lady Apples and Coffee Ice Cream are ordered.
+
+```{r}
+apples_coffee_table =
+  instacart |>
+  filter(product_name %in% c("Pink Lady Apples", "Coffee Ice Cream")) |>
+  group_by(product_name, order_dow) |>
+  summarize(mean_hour = mean(order_hour_of_day, na.rm = TRUE)) |>
+  mutate(
+    product_name = factor(product_name, levels = c("Pink Lady Apples", "Coffee Ice Cream")),
+    order_dow = factor(order_dow, levels = 0:6, labels = c("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"))
+  ) |> 
+  pivot_wider(names_from = order_dow, values_from = mean_hour)
+```
+
+
+
+
+### Problem 2: BRFSS SMART 2010
+
+
+#### loading up the BRFSS dataset from the p8105.datasets package:
