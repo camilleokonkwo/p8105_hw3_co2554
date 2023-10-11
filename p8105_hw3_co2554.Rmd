@@ -1,6 +1,6 @@
 ---
 title: "p8105_hw3_co2554"
-author: "Camille Okonwko"
+author: "Camille Okonkwo"
 date: "`r Sys.Date()`"
 output: github_document
 ---
@@ -71,39 +71,39 @@ The following plot will illustrate the number of items ordered in each aisle:
 ```{r ggp_aisle, message = FALSE}
 ggp_aisle_plot =
   instacart |>
-  group_by(department, aisle) |>
-  summarize(total_items_ordered = sum(add_to_cart_order)) |>
-  filter(total_items_ordered > 10000) |>
-  arrange(department, desc(total_items_ordered)) |>
-  ggplot(aes(x = reorder(aisle, -total_items_ordered), y = total_items_ordered, fill = department)) +
-  geom_bar(stat = "identity") +
-  theme_minimal() +
+  count(aisle) |>
+  arrange(desc(n)) |>
+  filter(n > 10000) |>
+  arrange(aisle, desc(n)) |>
+  mutate(aisle = fct_reorder(aisle, n)) |>
+  ggplot(aes(x = aisle, y = n)) +
+  geom_point() +
   labs(
-    title = "Number of Items Ordered in Each Aisle (Aisles with >10,000 items) - Grouped by Department",
+    title = "Number of Items Ordered in Each Aisle (Aisles with >10,000 items)",
     x = "Aisle",
-    y = "Number of Items Ordered",
-    fill = "Department"
+    y = "Number of Items Ordered"
   ) +
-  scale_y_continuous(labels = scales::comma_format(scale = 1e-3)) +
-  scale_x_discrete() +
-  scale_fill_viridis_d(direction = -1) +
-  scale_color_viridis_d(direction = -1)
+  theme(axis.text.x = element_text(angle = 60, hjust = 1)) +
+  scale_color_viridis_d() 
+
+print(ggp_aisle_plot)
 ```
 
 
-This table includes the three most popular items in each of the aisles "baking ingredients", "dog food care:, and "packaged vegetable fruits"
+This table includes the three most popular items in each of the aisles "baking ingredients", "dog food care, and "packaged vegetable fruits"
 
 ```{r popular_items, message = FALSE}
 popular_items_table =
-  instacart |>
+instacart |> 
   filter(aisle %in% c("baking ingredients", "dog food care", "packaged vegetables fruits")) |>
-  group_by(aisle, product_name) |>
-  summarize(order_count = sum(add_to_cart_order)) |>
-  group_by(aisle) |>
-  do(top_n(., 3, wt = order_count))
+  group_by(aisle) |> 
+  count(product_name) |> 
+  mutate(rank = min_rank(desc(n))) |> 
+  filter(rank < 4) |> 
+  arrange(desc(n))
 
-kable(popular_items_table, 
-      col.names = c("Aisle", "Product Name", "Order Count"),
+kable(popular_items_table,
+      col.names = c("Aisle", "Product", "N", "Rank"),
       align = "c")
 ```
 
@@ -132,10 +132,6 @@ kable(apples_coffee_table,
 
 ### Problem 2: BRFSS SMART 2010
 
-
- 
-#### loading up the BRFSS dataset from the p8105.datasets package:
-
 ```{r}
 
 brfss_smart2010 = 
@@ -158,15 +154,144 @@ brfss_smart2010 |>
   mutate(response = factor(response, levels = c("Poor", "Fair", "Good", "Very Good", "Excellent"), ordered = TRUE))
 ```
 
+* In 2002, `r brfss_smart2010_df |> filter(year == "2002") |>  group_by(locationabbr) |>  summarise(total_observations = n()) |> filter(total_observations >= 7) |> count()` states were observed at 7 or more locations. In 2010 `r brfss_smart2010_df |> filter(year == "2010") |>  group_by(locationabbr) |>  summarise(total_observations = n()) |> filter(total_observations >= 7) |> count()` states were observed at 7 or more locations as well. This is a positive sign since the number of states increased, we can see that SMART project was expanding and able to track more information to reach more populations. 
 
-* In 2002, `r brfss_smart2010_df |> filter(year == 2002) |>  group_by(locationabbr) |>  summarise(total_observations = n()) |> filter(total_observations >= 7) |> count()` states were observed at 7 or more locations. In 2010 `r brfss_smart2010_df |> filter(year == 2010) |>  group_by(locationabbr) |>  summarise(total_observations = n()) |> filter(total_observations >= 7) |> count()` states were observed at 7 or more locations as well.
+```{r excellent_ggp}
+excellent_plot = 
+  brfss_smart2010_df |> 
+  filter(response == "Excellent")  |> 
+  group_by(locationabbr, year) |> 
+  summarise(avg_data_value = mean(data_value, na.rm = TRUE)) |> 
+  ggplot(aes(x = year, y = avg_data_value, group = locationabbr, color = locationabbr)) +
+  geom_line() +
+  labs(title = "Average Data Value (Excellent Responses) Over Time by State",
+       x = "Year",
+       y = "Average Data Value") +
+  theme_minimal() +
+  scale_color_viridis_d()
+```
 
 
+```{r ny_plot}
+ny_plot = 
+  brfss_smart2010_df  |> 
+  filter((year == 2006 | year == 2010) & locationabbr == "NY") |> 
+ggplot(aes(x = response, y = data_value, fill = response)) +
+  geom_boxplot() +
+  labs(title = "Distribution of Data Value by Response in NY State (2006 and 2010)",
+       x = "Response",
+       y = "Data Value") +
+  theme_minimal() +
+  facet_wrap(~ year, ncol = 1) +
+  scale_fill_viridis_d()
+
+```
 
 
+### Problem 3: MIMS NHANES Datasets
+
+### Let's load, tidy, and merge these datasets.
+
+```{r nhanes_covar}
+demographics_df=
+  read.csv("data/nhanes_covar.csv", skip = 4, na = "." ) |> 
+  janitor::clean_names() |> 
+  mutate(
+    sex = ifelse(sex == 1, "Male", "Female"), 
+    education = case_match(education,
+                           "1" ~ "Less than High School", 
+                           "2" ~ "High School Equivalent", 
+                           "3" ~ "More than High School"), 
+    education = fct_relevel(education, c("Less than High School", "High School Equivalent", "More than High School"))
+    )|> 
+      filter(age >= 21) |> 
+      drop_na()
+```
 
 
+```{r nnhanes_accel}
+accel_df=
+  read.csv("data/nhanes_accel.csv") |> 
+  janitor::clean_names() |> 
+  pivot_longer(
+    min1:min1440,
+    names_to = "minute",
+    names_prefix = "min",
+    values_to = "mims"
+  )
+```
 
 
+Time to merge:
 
+```{r}
+MIMS_df = 
+  inner_join(demographics_df, accel_df)
+```
+
+This table shows the number of men and women in each education category:
+
+```{r}
+demographics_df |> 
+  group_by(education, sex) |> 
+  summarize(n_sex = n()) |> 
+  pivot_wider(
+    names_from = sex,
+    values_from = n_sex
+  ) |> 
+  knitr::kable()
+```
+
+From our table, we see that more men than women have an education equivalent to high school or more. The distribution of sex in each education level is roughly equal, although there are are more males with a high school equivalent education and more females with education that is beyond high school. 
+
+
+Here is a plot of the distribution of sex in each education category: 
+
+```{r}
+demographics_df |> 
+  ggplot(aes(x = education, y = age, fill = factor(sex))) +
+  geom_bar(position = "dodge", stat = "summary", fun = "mean") +
+  labs(title = "Average Age Distributions by Gender and Education",
+       x = "Education Level",
+       y = "Average Age",
+       fill = "Gender") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+
+Here is a plot to show total activity: 
+```{r}
+MIMS_df |> 
+  group_by(seqn, age, sex, education) |> 
+  summarize(total_activity = sum(mims)) |> 
+  ggplot(aes(x = age, y = total_activity, color = sex)) + 
+  geom_point() +
+  geom_smooth() +
+  facet_grid(. ~ education) + 
+  labs(title = "Total Activity", 
+        x = "Age",
+        y = "Total Activity (MIMS)") +
+    scale_color_viridis_d() 
+```
+
+Here we see, that in males and females regardless of education total activity decreases. Activity levels are generally higher in both sex groups with an education level less than high school. Females on average have a higher activity level in high school equivalent and more than high school groups. 
+
+This is a plot to show the 24-activity time courses for each education level:
+
+```{r}
+MIMS_df |>
+  mutate(
+    minute = as.numeric(minute)
+  ) |> 
+  ggplot(aes(x = minute, y = mims, color = sex)) + 
+  geom_point(alpha = 0.5) +
+  facet_grid(. ~ education) + 
+  labs(title = "Activity Over the Course of a Day", 
+        x = "Minute of the Day",
+        y = "Activity (mims)") +
+      scale_color_viridis_d() 
+```
+
+Here, we see activity levels generally increase (likely after waking) at roughly 480-510 minutes and decrease at later parts of the day for both sex groups regardless of education level. Men and womenwith less than a high school education or high school equivalent generally have the same activity levels and peaks. However, for those beyond a high school level education, the range of activity is quite larger, with noticeable peaks in activity for women around 500 minutes and males around 1250 minutes. 
 
