@@ -124,13 +124,49 @@ apples_coffee_table =
 
 kable(apples_coffee_table, 
       col.names = c("Product", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"),
-      align = "c")
+      align = "c",
+      digits =2)
 ```
-
 
 
 
 ### Problem 2: BRFSS SMART 2010
 
 
+ 
 #### loading up the BRFSS dataset from the p8105.datasets package:
+
+```{r}
+
+brfss_smart2010 = 
+  brfss_smart2010 |> 
+  as_tibble()
+
+```
+
+#### Let's do some data cleaning.
+
+
+First, we'll format the data to include more appropriate data names. After the variable names are cleaned, we'll focus in on the "Overall Health" `topic` with the `response` "Poor", "Fair", "Good", "Very Good", and "Excellent.
+
+```{r brfss_cleaned, message = FALSE}
+brfss_smart2010_df =
+brfss_smart2010 |> 
+  janitor::clean_names() |> 
+   filter(topic == "Overall Health" & 
+         response %in% c("Excellent", "Very good", "Good", "Fair", "Poor")) |> 
+  mutate(response = factor(response, levels = c("Poor", "Fair", "Good", "Very Good", "Excellent"), ordered = TRUE))
+```
+
+
+* In 2002, `r brfss_smart2010_df |> filter(year == 2002) |>  group_by(locationabbr) |>  summarise(total_observations = n()) |> filter(total_observations >= 7) |> count()` states were observed at 7 or more locations. In 2010 `r brfss_smart2010_df |> filter(year == 2010) |>  group_by(locationabbr) |>  summarise(total_observations = n()) |> filter(total_observations >= 7) |> count()` states were observed at 7 or more locations as well.
+
+
+
+
+
+
+
+
+
+
