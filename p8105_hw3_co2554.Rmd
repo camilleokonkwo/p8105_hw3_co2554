@@ -18,12 +18,10 @@ devtools::install_github("p8105/p8105.datasets", force = TRUE)
 
 ### loading up the necessary datasets from the p8105.datasets library, and tidyverse
 ```{r package load, message = FALSE}
-library(p8105.datasets)
-library(tidyverse)
-library(viridis)
-library(patchwork)
-library(ggridges)
 library(knitr)
+library(tidyverse)
+library(p8105.datasets)
+library(viridis)
 ```
 
 ### Problem 1: InstaCart
@@ -139,10 +137,6 @@ kable(apples_coffee_table,
 Let's load the `brfss_smart2010` dataset.
 ```{r}
 data("brfss_smart2010")
-
-brfss_smart2010 = 
-  brfss_smart2010 |> 
-  as_tibble()
 ```
 
 #### Let's do some data cleaning.
@@ -150,7 +144,7 @@ brfss_smart2010 =
 
 First, we'll format the data to include more appropriate data names. After the variable names are cleaned, we'll focus in on the "Overall Health" `topic` with the `response` "Poor", "Fair", "Good", "Very Good", and "Excellent.
 
-```{r brfss_cleaned, message = FALSE}
+```{r brfss_cleaned, message = FALSE, warning = FALSE}
 brfss_smart2010_df =
 brfss_smart2010 |> 
   janitor::clean_names() |> 
@@ -188,7 +182,7 @@ In 2002, `r brfss_smart2010_df |> filter(year == "2002") |>  group_by(state) |> 
 
 Let's make a dataframe for `Excellent` responses.
 
-```{r excellent_df}
+```{r excellent_df, message = FALSE}
 excellent_df= 
   brfss_smart2010_df |> 
   filter(response == "Excellent")  |> 
@@ -200,7 +194,7 @@ excellent_df=
 
 Now, let's make a spaghetti plot that shows the average `data_value` as a new variable across locations through time within a state among `Excellent` responses. 
 
-```{r excellent_plot}
+```{r excellent_plot, warning = FALSE, message = FALSE, fig.height = 6, fig.width = 6}
 excellent_df |> 
   ggplot(aes(x = year, y = avg_data_value, color = state)) +
   geom_line() +
@@ -209,17 +203,15 @@ excellent_df |>
        y = "Average Data Value")
 ```
 
-The range of average data values from 2002-2010 are between 15-29.
+The range of average data values from 2002-2010 mostly falls between between 15-29. Across all states observed, the average value for "Excellent" Overall Health lowers from 2002 to 2010.  
 
 Now, let's make a 2-panel dot plot showing the distribution of `data_value` for responses "Poor" to "Excellent" in NY state for 2006 and 2010:
 
-```{r ny_plot}
-ny_df = 
-  brfss_smart2010_df  |> 
+```{r ny_plot, warning = FALSE, message = FALSE, fig.height = 6, fig.width = 6}
+brfss_smart2010_df  |> 
   filter((year == 2006 | year == 2010) & state == "NY") |>
-  select(year, response, data_value, county)
-
-  ggplot(ny_df, aes(x = response, y = data_value, color = response)) +
+  select(year, response, data_value, county) |> 
+  ggplot(aes(x = response, y = data_value, color = response)) +
   geom_point() +
   facet_grid(. ~ year) + 
   labs(title = "Dot Plot of Data Value by Response in NY State (2006 and 2010)",
@@ -229,7 +221,7 @@ ny_df =
     theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
-From our output, we can see that `data_values` increase overall from "Poor" to "Good"/ "Very Good" health betwwen 2006 to 2010. However, `data_values` also decrease from "Very Good" to "Excellent".
+From our output, we can see that `data_values` increase overall from "Poor" to "Good"/"Very Good" health between 2006 to 2010. However, `data_values` also decrease from "Very Good" to "Excellent" In addition, Respondents who had "Poor", "Fair", or "Very good" distribution of data value scores was more broad. Respondents with "Good" or "excellent" scores had a more clustered distribution of data values in 2010 compared to 2006. 
 
 
 ### Problem 3: MIMS NHANES Datasets
@@ -238,7 +230,7 @@ From our output, we can see that `data_values` increase overall from "Poor" to "
 
 First, the demographics dataset.
 
-```{r nhanes_covar}
+```{r nhanes_covar, message = FALSE}
 demographics_df=
   read.csv("data/nhanes_covar.csv", skip = 4, na = "." ) |> 
   janitor::clean_names() |> 
@@ -257,7 +249,7 @@ demographics_df=
 
 Now, the accelerometer dataset.
 
-```{r nnhanes_accel}
+```{r nnhanes_accel, message = FALSE}
 accel_df=
   read.csv("data/nhanes_accel.csv") |> 
   janitor::clean_names() |> 
@@ -272,14 +264,14 @@ accel_df=
 
 Time to merge both datasets:
 
-```{r}
+```{r MIMS_df, message = FALSE, warning = FALSE}
 MIMS_df = 
   inner_join(demographics_df, accel_df)
 ```
 
 This table shows the number of men and women in each education category:
 
-```{r}
+```{r education_table, message = FALSE, warning =FALSE}
 demographics_df |> 
   group_by(education, sex) |> 
   summarize(n_sex = n()) |> 
@@ -295,7 +287,7 @@ From our table, we see that more men than women have an education equivalent to 
 
 Here is a plot of the distribution of sex in each education category: 
 
-```{r}
+```{r sex_education, message = FALSE, warning = FALSE, fig.height = 6, fig.width = 6}
 demographics_df |> 
 ggplot(aes(x = education, y = age, fill = factor(sex))) +
   geom_boxplot() +
@@ -303,8 +295,6 @@ ggplot(aes(x = education, y = age, fill = factor(sex))) +
        x = "Education Level",
        y = "Age",
        fill = "Gender") +
- scale_fill_viridis_d() +  
-  scale_color_viridis_d() + 
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
@@ -313,7 +303,7 @@ The boxplots illustrate that females with less than a high school education tend
 
 Here is a plot to show total activity: 
 
-```{r}
+```{r MIMS_activity, message = FALSE, warning = FALSE, fig.height = 6, fig.width = 6}
 MIMS_df |> 
   group_by(seqn, age, sex, education) |> 
   summarize(total_activity = sum(mims)) |> 
@@ -331,7 +321,7 @@ Here we see, that in males and females regardless of education total activity de
 
 This is a plot to show the 24-activity time courses for each education level:
 
-```{r}
+```{r MIMS_daily_activity, message = FALSE, warning = FALSE, fig.height= 6, fig.width = 6}
 MIMS_df |>
   mutate(
     minute = as.numeric(minute)
